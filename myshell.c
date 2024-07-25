@@ -77,6 +77,12 @@ void redirect(int fd, char *path, int flag) {   // リダイレクト処理を�
   //        入力の場合 O_RDONLY
   //        出力の場合 O_WRONLY|O_TRUNC|O_CREAT
   //
+  close(fd);
+  int fdo = open(path, flag, 0644);
+  if (fdo < 0) {
+    perror(path);
+    exit(1);
+  }
 }
 
 void externalCom(char *args[]) {                // 外部コマンドを実行する
@@ -86,6 +92,8 @@ void externalCom(char *args[]) {                // 外部コマンドを実行�
     exit(1);                                    //     非常事態，親を終了
   }
   if (pid==0) {                                 //   子プロセスなら
+    if (ifile != NULL) redirect(0, ifile, O_RDONLY);
+    if (ofile != NULL) redirect(1, ofile, O_WRONLY|O_TRUNC|O_CREAT);
     execvp(args[0], args);                      //     コマンドを実行
     perror(args[0]);
     exit(1);
@@ -130,3 +138,25 @@ int main() {
   return 0;
 }
 
+/* 実行例
+$ make                                                <-- コンパイル結果
+cc -D_GNU_SOURCE -Wall -std=c99 -o myshell myshell.c
+$ ./myshell
+Command: rm a.txt
+Command: ls > a.txt                                   <-- 標準出力のリダイレクト(ファイルが存在しない場合)
+Command: cat a.txt
+Makefile
+README.md
+README.pdf
+a.txt
+myshell
+myshell.c
+Command: echo aaa > a.txt                             <-- 標準出力のリダイレクト(ファイルが存在する場合)
+Command: cat < a.txt                                  <-- 標準入力のリダイレクト
+aaa
+Command: chmod u-rw a.txt
+Command: cat < a.txt                                  <-- 標準出力リダイレクトでエラー
+a.txt: Permission denied
+Command: echo aaa > a.txt                             <-- 標準入力リダイレクトでエラー
+a.txt: Permission denied
+*/
